@@ -69,6 +69,18 @@ export interface NetworkSnapshot {
   active_interface: string;
 }
 
+export interface NetworkDetails {
+  interface_name: string;
+  ipv4_address: string;
+  ipv6_address: string;
+  mac_address: string;
+  subnet_mask: string;
+  gateway_ip: string;
+  dns_servers: string[];
+  wifi_ssid: string;
+  is_connected: boolean;
+}
+
 export interface BatterySnapshot {
   is_present: boolean;
   is_charging: boolean;

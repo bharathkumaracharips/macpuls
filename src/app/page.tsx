@@ -13,6 +13,7 @@ import { SystemOverview } from '@/components/overview/SystemOverview';
 import { CpuView } from '@/components/cpu/CpuView';
 import { MemoryBreakdown } from '@/components/memory/MemoryBreakdown';
 import { GpuView } from '@/components/gpu/GpuView';
+import { NetworkToolsView } from '@/components/network/NetworkToolsView';
 import { ProcessTable } from '@/components/process/ProcessTable';
 import { StorageTreemap } from '@/components/storage/StorageTreemap';
 import { CleanupDashboard } from '@/components/cleanup/CleanupDashboard';
@@ -57,6 +58,8 @@ export default function Home() {
         return <MemoryBreakdown />;
       case 'gpu':
         return <GpuView />;
+      case 'network':
+        return <NetworkToolsView />;
       case 'processes':
         return <ProcessTable />;
       case 'storage':

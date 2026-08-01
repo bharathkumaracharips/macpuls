@@ -7,6 +7,7 @@ export type ViewTab =
   | 'cpu'
   | 'memory'
   | 'gpu'
+  | 'network'
   | 'processes'
   | 'storage'
   | 'cleanup'

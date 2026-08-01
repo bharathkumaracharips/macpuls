@@ -57,7 +57,11 @@ pub fn run() {
             get_plugins_command,
             run_cpu_benchmark_command,
             run_disk_benchmark_command,
-            generate_diagnostics_command
+            generate_diagnostics_command,
+            get_network_details_command,
+            renew_dhcp_ip_command,
+            spoof_mac_address_command,
+            flush_dns_cache_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running MacPulse desktop application");

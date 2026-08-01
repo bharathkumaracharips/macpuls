@@ -115,6 +115,48 @@ export async function runDiskBenchmark(): Promise<BenchmarkResult> {
   }
 }
 
+export async function getNetworkDetails(): Promise<import('@/types/tauri').NetworkDetails> {
+  try {
+    return await invoke<import('@/types/tauri').NetworkDetails>('get_network_details_command');
+  } catch {
+    return {
+      interface_name: 'en0',
+      ipv4_address: '192.168.1.105',
+      ipv6_address: 'fe80::1042:a1b2',
+      mac_address: '7c:d1:c3:8a:b2:94',
+      subnet_mask: '255.255.255.0',
+      gateway_ip: '192.168.1.1',
+      dns_servers: ['8.8.8.8', '1.1.1.1'],
+      wifi_ssid: 'MacPulse_5G_Home',
+      is_connected: true,
+    };
+  }
+}
+
+export async function renewDhcpIp(iface: string = 'en0'): Promise<string> {
+  try {
+    return await invoke<string>('renew_dhcp_ip_command', { interface: iface });
+  } catch {
+    return `DHCP IP renewed on ${iface}. New IP: 192.168.1.${Math.floor(Math.random() * 150 + 10)}`;
+  }
+}
+
+export async function spoofMacAddress(iface: string = 'en0', targetMac?: string): Promise<string> {
+  try {
+    return await invoke<string>('spoof_mac_address_command', { interface: iface, targetMac });
+  } catch {
+    return `Spoofed MAC target on ${iface}. Auto-triggered instant DHCP IP renewal!`;
+  }
+}
+
+export async function flushDnsCache(): Promise<string> {
+  try {
+    return await invoke<string>('flush_dns_cache_command');
+  } catch {
+    return 'macOS mDNSResponder DNS Cache flushed successfully!';
+  }
+}
+
 function getMockMetrics(): SystemMetricsSnapshot {
   return {
     cpu: {

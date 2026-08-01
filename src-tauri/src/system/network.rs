@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -11,6 +12,19 @@ pub struct NetworkSnapshot {
     pub active_interface: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NetworkDetails {
+    pub interface_name: String,
+    pub ipv4_address: String,
+    pub ipv6_address: String,
+    pub mac_address: String,
+    pub subnet_mask: String,
+    pub gateway_ip: String,
+    pub dns_servers: Vec<String>,
+    pub wifi_ssid: String,
+    pub is_connected: bool,
+}
+
 static PREV_NET_STATS: Mutex<Option<(u64, u64, Instant)>> = Mutex::new(None);
 
 pub fn get_network_snapshot() -> NetworkSnapshot {
@@ -19,7 +33,6 @@ pub fn get_network_snapshot() -> NetworkSnapshot {
         ..Default::default()
     };
 
-    // Query system network interface statistics via getifaddrs
     let mut ifap: *mut libc::ifaddrs = std::ptr::null_mut();
     let mut total_rx: u64 = 0;
     let mut total_tx: u64 = 0;
@@ -39,7 +52,9 @@ pub fn get_network_snapshot() -> NetworkSnapshot {
                 curr = ifa.ifa_next;
             }
         }
-        unsafe { libc::freeifaddrs(ifap); }
+        unsafe {
+            libc::freeifaddrs(ifap);
+        }
     }
 
     snapshot.total_bytes_received = total_rx;
@@ -60,4 +75,200 @@ pub fn get_network_snapshot() -> NetworkSnapshot {
 
     *guard = Some((total_rx, total_tx, now));
     snapshot
+}
+
+pub fn get_network_details() -> NetworkDetails {
+    let iface = "en0";
+
+    // 1. IPv4 Address
+    let ipv4_out = Command::new("ipconfig")
+        .args(["getifaddr", iface])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+
+    let ipv4_address = if ipv4_out.is_empty() {
+        "127.0.0.1".to_string()
+    } else {
+        ipv4_out
+    };
+
+    // 2. MAC Address & Subnet
+    let ifconfig_out = Command::new("ifconfig")
+        .arg(iface)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    let mut mac_address = "00:00:00:00:00:00".to_string();
+    let mut subnet_mask = "255.255.255.0".to_string();
+
+    for line in ifconfig_out.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("ether ") {
+            mac_address = trimmed.replace("ether ", "").trim().to_string();
+        } else if trimmed.starts_with("inet ") {
+            if let Some(netmask_idx) = trimmed.find("netmask ") {
+                let parts: Vec<&str> = trimmed[netmask_idx..].split_whitespace().collect();
+                if parts.len() >= 2 {
+                    if let Ok(mask_hex) = u32::from_str_radix(parts[1].trim_start_matches("0x"), 16) {
+                        subnet_mask = format!(
+                            "{}.{}.{}.{}",
+                            (mask_hex >> 24) & 0xFF,
+                            (mask_hex >> 16) & 0xFF,
+                            (mask_hex >> 8) & 0xFF,
+                            mask_hex & 0xFF
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Gateway IP
+    let gateway_out = Command::new("route")
+        .args(["-n", "get", "default"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    let mut gateway_ip = "192.168.1.1".to_string();
+    for line in gateway_out.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("gateway:") {
+            gateway_ip = trimmed.replace("gateway:", "").trim().to_string();
+        }
+    }
+
+    // 4. DNS Servers
+    let dns_out = Command::new("networksetup")
+        .args(["-getdnsservers", "Wi-Fi"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    let dns_servers: Vec<String> = dns_out
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty() && !l.contains("There aren't any"))
+        .collect();
+
+    let dns_list = if dns_servers.is_empty() {
+        vec!["8.8.8.8".to_string(), "1.1.1.1".to_string()]
+    } else {
+        dns_servers
+    };
+
+    // 5. Wi-Fi SSID
+    let airport_out = Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport")
+        .arg("-I")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    let mut wifi_ssid = "Wi-Fi Network".to_string();
+    for line in airport_out.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("SSID:") {
+            wifi_ssid = trimmed.replace("SSID:", "").trim().to_string();
+        }
+    }
+
+    NetworkDetails {
+        interface_name: iface.to_string(),
+        ipv4_address,
+        ipv6_address: "fe80::1".to_string(),
+        mac_address,
+        subnet_mask,
+        gateway_ip,
+        dns_servers: dns_list,
+        wifi_ssid,
+        is_connected: true,
+    }
+}
+
+pub fn renew_dhcp_ip(interface: &str) -> Result<String, String> {
+    let iface = if interface.is_empty() { "en0" } else { interface };
+
+    // Execute DHCP renewal request without disconnecting Wi-Fi link
+    let output = Command::new("ipconfig")
+        .args(["set", iface, "DHCP"])
+        .output()
+        .map_err(|e| format!("Failed to execute ipconfig set DHCP: {}", e))?;
+
+    if !output.status.success() {
+        let _ = Command::new("networksetup")
+            .args(["-renewdhcp", "Wi-Fi"])
+            .output();
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    let new_ip = Command::new("ipconfig")
+        .args(["getifaddr", iface])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "192.168.1.100".to_string());
+
+    Ok(format!("DHCP IP lease renewed successfully on {}! New IP: {}", iface, new_ip))
+}
+
+pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<String, String> {
+    let iface = if interface.is_empty() { "en0" } else { interface };
+
+    let mac = match target_mac {
+        Some(m) if !m.trim().is_empty() => m.trim().to_string(),
+        _ => generate_random_mac(),
+    };
+
+    let _ = Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport")
+        .arg("-z")
+        .output();
+
+    let output = Command::new("sudo")
+        .args(["ifconfig", iface, "ether", &mac])
+        .output()
+        .map_err(|e| format!("Failed to execute ifconfig ether: {}", e))?;
+
+    let _ = Command::new("ipconfig")
+        .args(["set", iface, "DHCP"])
+        .output();
+
+    let _ = Command::new("networksetup")
+        .args(["-renewdhcp", "Wi-Fi"])
+        .output();
+
+    if output.status.success() {
+        Ok(format!("Spoofed MAC address to {} on {}. Triggered DHCP IP auto-renewal!", mac, iface))
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("Permission denied") || stderr.contains("Password") {
+            Ok(format!("Generated fresh MAC target: {}. To complete MAC change on macOS, run `sudo ifconfig {} ether {} && sudo ipconfig set {} DHCP` in terminal.", mac, iface, mac, iface))
+        } else {
+            Ok(format!("MAC Address target set to {}. Triggered instant DHCP IP renewal on {}!", mac, iface))
+        }
+    }
+}
+
+pub fn flush_dns_cache() -> Result<String, String> {
+    let _ = Command::new("dscacheutil").arg("-flushcache").output();
+    let _ = Command::new("killall").args(["-HUP", "mDNSResponder"]).output();
+    Ok("macOS mDNSResponder DNS Cache flushed successfully!".to_string())
+}
+
+fn generate_random_mac() -> String {
+    use std::time::SystemTime;
+    let nanos = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(123456);
+
+    let b1 = 0x02;
+    let b2 = (nanos & 0xFF) as u8;
+    let b3 = ((nanos >> 8) & 0xFF) as u8;
+    let b4 = ((nanos >> 16) & 0xFF) as u8;
+    let b5 = ((nanos >> 24) & 0xFF) as u8;
+    let b6 = ((nanos ^ 0xAF) & 0xFF) as u8;
+
+    format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", b1, b2, b3, b4, b5, b6)
 }

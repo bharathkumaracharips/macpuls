@@ -163,3 +163,23 @@ interface ProcessInfo {
 - **Arguments**: None
 - **Returns**: `Promise<BenchmarkResult>`
 - **Description**: Executes synthetic multi-core CPU hash stress or sequential SSD I/O speed tests.
+
+### 14. `get_network_details_command`
+- **Arguments**: None
+- **Returns**: `Promise<NetworkDetails>`
+- **Description**: Queries live network interface IP, MAC address, gateway, subnet mask, DNS servers, and Wi-Fi SSID.
+
+### 15. `renew_dhcp_ip_command`
+- **Arguments**: `{ interface: string }`
+- **Returns**: `Promise<string>`
+- **Description**: Triggers a DHCP lease renewal (`ipconfig set en0 DHCP`) to acquire a new local IP address without disconnecting the Wi-Fi link.
+
+### 16. `spoof_mac_address_command`
+- **Arguments**: `{ interface: string, targetMac?: string }`
+- **Returns**: `Promise<string>`
+- **Description**: Randomizes the hardware MAC address of the target interface and automatically triggers instant DHCP IP renewal.
+
+### 17. `flush_dns_cache_command`
+- **Arguments**: None
+- **Returns**: `Promise<string>`
+- **Description**: Flushes macOS `mDNSResponder` DNS resolver cache (`dscacheutil -flushcache`).

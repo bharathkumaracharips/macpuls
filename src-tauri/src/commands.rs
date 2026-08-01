@@ -19,7 +19,8 @@ use crate::storage::{
 };
 use crate::system::{
     battery::get_battery_snapshot, cpu::get_cpu_snapshot, disk::get_disk_snapshot,
-    gpu::get_gpu_snapshot, memory::get_memory_snapshot, network::get_network_snapshot,
+    gpu::get_gpu_snapshot, memory::get_memory_snapshot,
+    network::{flush_dns_cache, get_network_details, get_network_snapshot, renew_dhcp_ip, spoof_mac_address, NetworkDetails},
     thermal::get_thermal_snapshot, SystemMetricsSnapshot,
 };
 use std::sync::Arc;
@@ -120,4 +121,24 @@ pub fn run_disk_benchmark_command() -> BenchmarkResult {
 pub fn generate_diagnostics_command() -> SystemDiagnosticReport {
     let metrics = get_latest_metrics();
     generate_diagnostic_report(metrics)
+}
+
+#[tauri::command]
+pub fn get_network_details_command() -> NetworkDetails {
+    get_network_details()
+}
+
+#[tauri::command]
+pub fn renew_dhcp_ip_command(interface: String) -> Result<String, String> {
+    renew_dhcp_ip(&interface)
+}
+
+#[tauri::command]
+pub fn spoof_mac_address_command(interface: String, target_mac: Option<String>) -> Result<String, String> {
+    spoof_mac_address(&interface, target_mac)
+}
+
+#[tauri::command]
+pub fn flush_dns_cache_command() -> Result<String, String> {
+    flush_dns_cache()
 }

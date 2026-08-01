@@ -10,11 +10,15 @@ import { SystemMetricsSnapshot } from '@/types/tauri';
 
 // Tab Views
 import { SystemOverview } from '@/components/overview/SystemOverview';
+import { HealthComplianceView } from '@/components/audit/HealthComplianceView';
 import { CpuView } from '@/components/cpu/CpuView';
 import { MemoryBreakdown } from '@/components/memory/MemoryBreakdown';
 import { GpuView } from '@/components/gpu/GpuView';
 import { NetworkToolsView } from '@/components/network/NetworkToolsView';
 import { ProcessTable } from '@/components/process/ProcessTable';
+import { ServicesManagerView } from '@/components/services/ServicesManagerView';
+import { ThreatInspectorView } from '@/components/threats/ThreatInspectorView';
+import { ReverseEngineeringView } from '@/components/reverse/ReverseEngineeringView';
 import { StorageTreemap } from '@/components/storage/StorageTreemap';
 import { CleanupDashboard } from '@/components/cleanup/CleanupDashboard';
 import { HistoryView } from '@/components/history/HistoryView';
@@ -50,6 +54,8 @@ export default function Home() {
 
   const renderActiveView = () => {
     switch (activeTab) {
+      case 'health':
+        return <HealthComplianceView />;
       case 'overview':
         return <SystemOverview />;
       case 'cpu':
@@ -62,6 +68,12 @@ export default function Home() {
         return <NetworkToolsView />;
       case 'processes':
         return <ProcessTable />;
+      case 'services':
+        return <ServicesManagerView />;
+      case 'threats':
+        return <ThreatInspectorView />;
+      case 'reverse':
+        return <ReverseEngineeringView />;
       case 'storage':
         return <StorageTreemap />;
       case 'cleanup':
@@ -79,7 +91,7 @@ export default function Home() {
       case 'settings':
         return <SettingsView />;
       default:
-        return <SystemOverview />;
+        return <HealthComplianceView />;
     }
   };
 

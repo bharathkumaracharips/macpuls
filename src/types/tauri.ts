@@ -198,3 +198,130 @@ export interface BenchmarkResult {
   details: string;
   duration_ms: number;
 }
+
+export interface ScorePenaltyItem {
+  category: string;
+  description: string;
+  points_deducted: number;
+  severity: string;
+}
+
+export interface SecurityScoreBreakdown {
+  overall_score: number;
+  grade: string;
+  issues_count: number;
+  penalty_items: ScorePenaltyItem[];
+}
+
+export interface SbomReport {
+  app_name: string;
+  bundle_identifier: string;
+  executable_path: string;
+  architecture: string;
+  sha256_hash: string;
+  team_id: string;
+  linked_frameworks: string[];
+  timestamp_epoch: number;
+}
+
+export interface ForensicEvidenceBundle {
+  timestamp_utc: string;
+  hostname: string;
+  macos_version: string;
+  kernel_version: string;
+  active_processes_count: number;
+  active_listening_ports_count: number;
+  persistence_items_count: number;
+  evidence_sha256: string;
+  summary_markdown: string;
+}
+
+export interface SnapshotDiffResult {
+  baseline_timestamp: string;
+  current_timestamp: string;
+  new_launch_agents: string[];
+  new_network_services: string[];
+  new_installed_apps: string[];
+  modified_permissions: string[];
+  total_changes_count: number;
+}
+
+export interface TimelineEvent {
+  timestamp: string;
+  category: string;
+  event_description: string;
+  severity: string;
+  process_source?: string;
+}
+
+export interface BinaryThreatReport {
+  file_name: string;
+  file_path: string;
+  file_size_bytes: number;
+  sha256_hash: string;
+  architecture: string;
+  code_signature_status: string;
+  team_id: string;
+  is_notarized: boolean;
+  is_sandboxed: boolean;
+  is_unsigned: boolean;
+  risk_score: number;
+  behavioral_flags: string[];
+}
+
+export interface YaraMatchResult {
+  rule_name: string;
+  target_path: string;
+  matched_strings: string[];
+  threat_severity: string;
+  description: string;
+}
+
+export interface IocMatch {
+  ioc_type: string;
+  indicator: string;
+  match_location: string;
+  details: string;
+}
+
+export interface UsbVolumeInspection {
+  volume_name: string;
+  mount_point: string;
+  total_size_bytes: number;
+  free_size_bytes: number;
+  hidden_files_count: number;
+  executable_binaries_count: number;
+  is_autorun_present: boolean;
+  status: string;
+}
+
+export interface ProcessSocketConnection {
+  pid: number;
+  process_name: string;
+  protocol: string;
+  local_address: string;
+  foreign_address: string;
+  state: string;
+  foreign_location_country: string;
+}
+
+export interface MachOInspectionReport {
+  file_name: string;
+  file_path: string;
+  architectures: string[];
+  is_fat_universal: boolean;
+  linked_frameworks: string[];
+  exported_symbols_count: number;
+  sections: string[];
+  entitlements_xml: string;
+  sha256: string;
+  md5: string;
+}
+
+export interface LaunchServiceItem {
+  name: string;
+  pid?: number;
+  status: string;
+  plist_path: string;
+  is_user_service: boolean;
+}

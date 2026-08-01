@@ -4,11 +4,16 @@ import { getLatestMetrics } from '@/lib/ipc';
 
 export type ViewTab =
   | 'overview'
+  | 'health'
   | 'cpu'
   | 'memory'
   | 'gpu'
   | 'network'
   | 'processes'
+  | 'services'
+  | 'threats'
+  | 'reverse'
+  | 'forensics'
   | 'storage'
   | 'cleanup'
   | 'history'

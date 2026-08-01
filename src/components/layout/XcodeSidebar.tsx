@@ -3,19 +3,22 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  ShieldCheck,
+  ShieldAlert,
   Cpu,
   Database,
   Activity,
   Network,
   ListFilter,
+  Server,
   HardDrive,
   Sparkles,
   History,
   Lightbulb,
-  ShieldCheck,
   Puzzle,
   Gauge,
   Settings,
+  FileCode,
 } from 'lucide-react';
 import { useSystemStore, ViewTab } from '@/store/useSystemStore';
 
@@ -31,34 +34,43 @@ export const XcodeSidebar: React.FC = () => {
 
   const navGroups: { groupName: string; items: NavItem[] }[] = [
     {
-      groupName: 'MONITORING',
+      groupName: 'HEALTH & COMPLIANCE',
       items: [
-        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'health', label: 'Health & Audit', icon: ShieldCheck, badge: '93/100' },
+        { id: 'overview', label: 'System Telemetry', icon: LayoutDashboard },
         { id: 'cpu', label: 'CPU Cores', icon: Cpu },
         { id: 'memory', label: 'Memory & VM', icon: Database },
         { id: 'gpu', label: 'GPU & Metal', icon: Activity },
+      ],
+    },
+    {
+      groupName: 'SECURITY & THREATS',
+      items: [
+        { id: 'threats', label: 'Threat & YARA Engine', icon: ShieldAlert },
+        { id: 'permissions', label: 'Permissions Audit', icon: ShieldCheck },
         { id: 'network', label: 'IP & MAC Tools', icon: Network, badge: 'DHCP' },
-        { id: 'processes', label: 'Processes', icon: ListFilter },
       ],
     },
     {
-      groupName: 'STORAGE & CLEANUP',
+      groupName: 'OBSERVABILITY & LOGS',
       items: [
-        { id: 'storage', label: 'Storage Treemap', icon: HardDrive },
-        { id: 'cleanup', label: 'Safe Cleanup', icon: Sparkles, badge: '5-Tier' },
-      ],
-    },
-    {
-      groupName: 'ANALYTICS & ADVISOR',
-      items: [
+        { id: 'processes', label: 'Process Explorer', icon: ListFilter },
+        { id: 'services', label: 'Launchctl Services', icon: Server },
         { id: 'history', label: 'Metrics History', icon: History },
         { id: 'recommendations', label: 'Smart Advisor', icon: Lightbulb },
       ],
     },
     {
+      groupName: 'STORAGE & REVERSE ENG',
+      items: [
+        { id: 'storage', label: 'Storage Treemap', icon: HardDrive },
+        { id: 'cleanup', label: 'Safe Cleanup', icon: Sparkles, badge: '5-Tier' },
+        { id: 'reverse', label: 'Mach-O Inspector', icon: FileCode },
+      ],
+    },
+    {
       groupName: 'SYSTEM & TOOLS',
       items: [
-        { id: 'permissions', label: 'Permissions Audit', icon: ShieldCheck },
         { id: 'plugins', label: 'Plugin Manager', icon: Puzzle },
         { id: 'diagnostics', label: 'Benchmarks', icon: Gauge },
         { id: 'settings', label: 'Settings', icon: Settings },

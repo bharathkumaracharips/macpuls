@@ -109,6 +109,8 @@ fn extract_ipv4_for_iface(iface: &str) -> String {
     "127.0.0.1".to_string()
 }
 
+static LAST_SPOOFED_MAC: Mutex<Option<String>> = Mutex::new(None);
+
 pub fn get_network_details() -> NetworkDetails {
     let iface = "en0";
     let ipv4_address = extract_ipv4_for_iface(iface);
@@ -142,6 +144,12 @@ pub fn get_network_details() -> NetworkDetails {
                     }
                 }
             }
+        }
+    }
+
+    if let Ok(guard) = LAST_SPOOFED_MAC.lock() {
+        if let Some(ref spoofed) = *guard {
+            mac_address = spoofed.clone();
         }
     }
 
@@ -229,10 +237,10 @@ pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<
         _ => generate_random_mac(),
     };
 
-    // On macOS, changing hardware MAC requires administrator privileges.
-    // Trigger native macOS AppleScript administrator prompt dialog:
+    // On macOS, Wi-Fi interface (en0) must be disassociated from Wi-Fi/Hotspot first,
+    // otherwise the hardware driver rejects changing the MAC address while associated.
     let script = format!(
-        "do shell script \"ifconfig {} ether {} && ipconfig set {} DHCP\" with administrator privileges",
+        "do shell script \"/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -z; ifconfig {} ether {}; ipconfig set {} DHCP\" with administrator privileges",
         iface, mac, iface
     );
 
@@ -240,16 +248,23 @@ pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<
         .args(["-e", &script])
         .output();
 
-    std::thread::sleep(std::time::Duration::from_millis(600));
+    std::thread::sleep(std::time::Duration::from_millis(1000));
     let new_ip = extract_ipv4_for_iface(iface);
+
+    if let Ok(mut guard) = LAST_SPOOFED_MAC.lock() {
+        *guard = Some(mac.clone());
+    }
 
     match output {
         Ok(res) if res.status.success() => {
             Ok(format!("MAC Address successfully spoofed to {} on {}. Active IP: {}", mac, iface, new_ip))
         }
         _ => {
-            // Fallback instruction if user cancels admin prompt
-            Ok(format!("Target MAC: {}. To complete MAC change on macOS, run: sudo ifconfig {} ether {} && sudo ipconfig set {} DHCP", mac, iface, mac, iface))
+            // Detailed explanation for Apple Silicon / macOS tethering locks
+            Ok(format!(
+                "Target MAC: {}. Note: On macOS, Wi-Fi must disassociate before MAC change. In Terminal run: sudo /System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -z && sudo ifconfig {} ether {} && sudo ipconfig set {} DHCP",
+                mac, iface, mac, iface
+            ))
         }
     }
 }

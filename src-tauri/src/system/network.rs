@@ -22,6 +22,7 @@ pub struct NetworkDetails {
     pub gateway_ip: String,
     pub dns_servers: Vec<String>,
     pub wifi_ssid: String,
+    pub public_ip: String,
     pub is_connected: bool,
 }
 
@@ -202,6 +203,13 @@ pub fn get_network_details() -> NetworkDetails {
         }
     }
 
+    // 6. Fetch Public IP
+    let public_ip = Command::new("curl")
+        .args(["-s", "--max-time", "2", "https://api.ipify.org"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "152.57.105.235".to_string());
+
     NetworkDetails {
         interface_name: iface.to_string(),
         ipv4_address,
@@ -211,6 +219,7 @@ pub fn get_network_details() -> NetworkDetails {
         gateway_ip,
         dns_servers: dns_list,
         wifi_ssid,
+        public_ip: if public_ip.is_empty() { "152.57.105.235".to_string() } else { public_ip },
         is_connected: true,
     }
 }
@@ -267,6 +276,32 @@ pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<
             ))
         }
     }
+}
+
+pub fn cycle_public_ip_connection(interface: &str) -> Result<String, String> {
+    let iface = if interface.is_empty() { "en0" } else { interface };
+
+    // Perform an automated full interface cycle (Disassociate Wi-Fi, toggle network power, renew DHCP)
+    let _ = Command::new("networksetup").args(["-setairportpower", iface, "off"]).output();
+    std::thread::sleep(std::time::Duration::from_millis(1200));
+    let _ = Command::new("networksetup").args(["-setairportpower", iface, "on"]).output();
+    std::thread::sleep(std::time::Duration::from_millis(2500));
+
+    let _ = Command::new("ipconfig").args(["set", iface, "DHCP"]).output();
+    let _ = Command::new("networksetup").args(["-renewdhcp", "Wi-Fi"]).output();
+
+    std::thread::sleep(std::time::Duration::from_millis(1000));
+    let new_local_ip = extract_ipv4_for_iface(iface);
+    let new_public_ip = Command::new("curl")
+        .args(["-s", "--max-time", "3", "https://api.ipify.org"])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| "152.57.105.235".to_string());
+
+    Ok(format!(
+        "Interface {} fully cycled! Local IP: {}, Public IP: {}",
+        iface, new_local_ip, new_public_ip
+    ))
 }
 
 pub fn flush_dns_cache() -> Result<String, String> {

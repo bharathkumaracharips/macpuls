@@ -70,6 +70,7 @@ pub fn run() {
             renew_dhcp_ip_command,
             spoof_mac_address_command,
             flush_dns_cache_command,
+            cycle_public_ip_command,
             get_security_health_score_command,
             generate_sbom_command,
             export_forensic_bundle_command,

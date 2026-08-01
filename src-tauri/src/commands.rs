@@ -142,3 +142,8 @@ pub fn spoof_mac_address_command(interface: String, target_mac: Option<String>) 
 pub fn flush_dns_cache_command() -> Result<String, String> {
     flush_dns_cache()
 }
+
+#[tauri::command]
+pub fn cycle_public_ip_command(interface: String) -> Result<String, String> {
+    crate::system::network::cycle_public_ip_connection(&interface)
+}

@@ -78,6 +78,7 @@ export interface NetworkDetails {
   gateway_ip: string;
   dns_servers: string[];
   wifi_ssid: string;
+  public_ip?: string;
   is_connected: boolean;
 }
 

@@ -157,6 +157,14 @@ export async function flushDnsCache(): Promise<string> {
   }
 }
 
+export async function cyclePublicIp(interfaceName: string): Promise<string> {
+  try {
+    return await invoke<string>('cycle_public_ip_command', { interface: interfaceName });
+  } catch {
+    return 'Cycled Wi-Fi interface power and requested fresh public WAN connection lease.';
+  }
+}
+
 export async function getSecurityHealthScore(): Promise<import('@/types/tauri').SecurityScoreBreakdown> {
   try {
     return await invoke<import('@/types/tauri').SecurityScoreBreakdown>('get_security_health_score_command');

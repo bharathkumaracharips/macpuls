@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Network, RefreshCw, Shield, Wifi, Terminal, CheckCircle2, Zap } from 'lucide-react';
+import { Network, RefreshCw, Shield, Wifi, Terminal, CheckCircle2, Zap, Globe } from 'lucide-react';
 import { NetworkDetails } from '@/types/tauri';
-import { getNetworkDetails, renewDhcpIp, spoofMacAddress, flushDnsCache } from '@/lib/ipc';
+import { getNetworkDetails, renewDhcpIp, spoofMacAddress, flushDnsCache, cyclePublicIp } from '@/lib/ipc';
 
 export const NetworkToolsView: React.FC = () => {
   const [details, setDetails] = useState<NetworkDetails | null>(null);
   const [isRenewingIp, setIsRenewingIp] = useState(false);
   const [isSpoofingMac, setIsSpoofingMac] = useState(false);
   const [isFlushingDns, setIsFlushingDns] = useState(false);
+  const [isCyclingPublicIp, setIsCyclingPublicIp] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const fetchDetails = async () => {
@@ -45,6 +46,15 @@ export const NetworkToolsView: React.FC = () => {
     setIsSpoofingMac(false);
   };
 
+  const handleCyclePublicIp = async () => {
+    setIsCyclingPublicIp(true);
+    setStatusMessage(null);
+    const msg = await cyclePublicIp(details?.interface_name || 'en0');
+    setStatusMessage(msg);
+    await fetchDetails();
+    setIsCyclingPublicIp(false);
+  };
+
   const handleFlushDns = async () => {
     setIsFlushingDns(true);
     setStatusMessage(null);
@@ -60,9 +70,9 @@ export const NetworkToolsView: React.FC = () => {
         <div className="flex items-center gap-3">
           <Network className="w-6 h-6 text-indigo-400" />
           <div>
-            <h2 className="text-base font-bold text-white tracking-tight">IP & MAC Address Randomizer & DHCP Manager</h2>
+            <h2 className="text-base font-bold text-white tracking-tight">IP & MAC Address Randomizer & Network Control Center</h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Change local IP addresses, spoof hardware MAC interfaces, and trigger instant DHCP lease renewals on macOS without disconnecting from Wi-Fi.
+              Change local IP addresses, spoof hardware MAC interfaces, cycle cellular hotspot links, and trigger instant DHCP lease renewals on macOS.
             </p>
           </div>
         </div>
@@ -86,14 +96,24 @@ export const NetworkToolsView: React.FC = () => {
 
       {/* Live Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* IPv4 Address */}
+        {/* Local IPv4 Address */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
           <div className="flex justify-between items-center text-xs text-slate-400">
-            <span>IPv4 Address</span>
+            <span>Local IPv4 (LAN)</span>
             <Wifi className="w-3.5 h-3.5 text-indigo-400" />
           </div>
           <p className="text-lg font-mono font-bold text-emerald-400">{details?.ipv4_address || '192.168.1.105'}</p>
           <span className="text-[10px] text-slate-500 font-mono">Subnet: {details?.subnet_mask || '255.255.255.0'}</span>
+        </div>
+
+        {/* Public Internet IP (WAN) */}
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
+          <div className="flex justify-between items-center text-xs text-slate-400">
+            <span>Public IP (WAN)</span>
+            <Globe className="w-3.5 h-3.5 text-cyan-400" />
+          </div>
+          <p className="text-lg font-mono font-bold text-cyan-300">{details?.public_ip || '152.57.105.235'}</p>
+          <span className="text-[10px] text-slate-500 font-mono">Gateway: {details?.gateway_ip || '192.0.0.1'}</span>
         </div>
 
         {/* Hardware MAC Address */}
@@ -108,16 +128,6 @@ export const NetworkToolsView: React.FC = () => {
           <span className="text-[10px] text-slate-500 font-mono">Interface: {details?.interface_name || 'en0'}</span>
         </div>
 
-        {/* Gateway IP */}
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
-          <div className="flex justify-between items-center text-xs text-slate-400">
-            <span>Gateway / Router</span>
-            <Network className="w-3.5 h-3.5 text-cyan-400" />
-          </div>
-          <p className="text-lg font-mono font-bold text-cyan-300">{details?.gateway_ip || '192.168.1.1'}</p>
-          <span className="text-[10px] text-slate-500 font-mono">SSID: {details?.wifi_ssid || 'Wi-Fi Network'}</span>
-        </div>
-
         {/* DNS Servers */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
           <div className="flex justify-between items-center text-xs text-slate-400">
@@ -127,20 +137,39 @@ export const NetworkToolsView: React.FC = () => {
           <p className="text-base font-mono font-bold text-amber-300">
             {details?.dns_servers?.join(', ') || '8.8.8.8, 1.1.1.1'}
           </p>
-          <span className="text-[10px] text-slate-500 font-mono">Status: Connected</span>
+          <span className="text-[10px] text-slate-500 font-mono">SSID: {details?.wifi_ssid || 'Wi-Fi Network'}</span>
         </div>
       </div>
 
       {/* Action Control Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* 1. Instant DHCP IP Renewal */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* 1. Automated Public & Hotspot IP Re-Acquisition */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+          <div className="flex items-center gap-2">
+            <Globe className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-sm font-bold text-white">Auto Public WAN IP Cycle</h3>
+          </div>
+          <p className="text-xs text-slate-400">
+            Automates cycling network interface power (`airport off/on`) to force hotspot/ISP gateway to re-assign a new Public IP.
+          </p>
+          <button
+            onClick={handleCyclePublicIp}
+            disabled={isCyclingPublicIp}
+            className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-cyan-600/20 transition disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isCyclingPublicIp ? 'animate-spin' : ''}`} />
+            <span>{isCyclingPublicIp ? 'Cycling Link...' : 'Auto-Cycle Public IP'}</span>
+          </button>
+        </div>
+
+        {/* 2. Instant Local DHCP IP Renewal */}
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-sm font-bold text-white">Instant DHCP IP Renewal</h3>
+            <h3 className="text-sm font-bold text-white">Instant Local DHCP IP Renewal</h3>
           </div>
           <p className="text-xs text-slate-400">
-            Sends a `DHCPREQUEST` packet to your router/AP to issue a new local IP address without breaking or disconnecting your active Wi-Fi link.
+            Sends a `DHCPREQUEST` packet to your router/AP to issue a new local IP address without breaking Wi-Fi link.
           </p>
           <button
             onClick={handleRenewIp}
@@ -148,18 +177,18 @@ export const NetworkToolsView: React.FC = () => {
             className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isRenewingIp ? 'animate-spin' : ''}`} />
-            <span>{isRenewingIp ? 'Renewing IP...' : 'Renew IP Address (No Disconnect)'}</span>
+            <span>{isRenewingIp ? 'Renewing IP...' : 'Renew Local DHCP IP'}</span>
           </button>
         </div>
 
-        {/* 2. Spoof Random MAC Address */}
+        {/* 3. Spoof Random MAC Address */}
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-purple-400" />
-            <h3 className="text-sm font-bold text-white">Randomize MAC & Auto-Renew IP</h3>
+            <h3 className="text-sm font-bold text-white">Randomize MAC & Auto-Renew</h3>
           </div>
           <p className="text-xs text-slate-400">
-            Generates a new random unicast MAC address, sets `ifconfig en0 ether`, and immediately requests a new IP address bound to the new MAC.
+            Disassociates interface, sets random MAC (`ifconfig en0 ether`), and requests new IP bound to the new MAC.
           </p>
           <button
             onClick={handleSpoofMac}
@@ -167,18 +196,18 @@ export const NetworkToolsView: React.FC = () => {
             className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/20 transition disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isSpoofingMac ? 'animate-spin' : ''}`} />
-            <span>{isSpoofingMac ? 'Spoofing MAC...' : 'Spoof MAC & Acquire New IP'}</span>
+            <span>{isSpoofingMac ? 'Spoofing MAC...' : 'Spoof MAC & Acquire IP'}</span>
           </button>
         </div>
 
-        {/* 3. Flush macOS DNS Cache */}
+        {/* 4. Flush macOS DNS Cache */}
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
           <div className="flex items-center gap-2">
-            <Terminal className="w-5 h-5 text-cyan-400" />
+            <Terminal className="w-5 h-5 text-amber-400" />
             <h3 className="text-sm font-bold text-white">Flush macOS DNS Cache</h3>
           </div>
           <p className="text-xs text-slate-400">
-            Clears macOS mDNSResponder DNS resolver cache (`dscacheutil -flushcache`) to resolve stale domain records instantly.
+            Clears macOS mDNSResponder DNS resolver cache (`dscacheutil -flushcache`) to resolve stale domain records.
           </p>
           <button
             onClick={handleFlushDns}
@@ -198,9 +227,9 @@ export const NetworkToolsView: React.FC = () => {
           <span>Manual Terminal Commands Reference for macOS:</span>
         </div>
         <div className="text-slate-500 space-y-1 text-[11px]">
-          <p>• Check IP: <code className="text-emerald-400">ipconfig getifaddr en0</code></p>
-          <p>• Renew DHCP IP without Wi-Fi drop: <code className="text-indigo-300">ipconfig set en0 DHCP</code></p>
-          <p>• Spoof MAC Address: <code className="text-purple-300">sudo ifconfig en0 ether 02:a1:b2:c3:d4:e5 && sudo ipconfig set en0 DHCP</code></p>
+          <p>• Public IP Check: <code className="text-cyan-300">curl https://api.ipify.org</code></p>
+          <p>• Cycle Wi-Fi Power: <code className="text-indigo-300">networksetup -setairportpower en0 off && networksetup -setairportpower en0 on</code></p>
+          <p>• Spoof MAC Address: <code className="text-purple-300">sudo /System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport -z && sudo ifconfig en0 ether 02:a1:b2:c3:d4:e5 && sudo ipconfig set en0 DHCP</code></p>
         </div>
       </div>
     </div>

@@ -68,7 +68,7 @@ export const XcodeSidebar: React.FC = () => {
     <aside className="w-64 bg-slate-900/80 backdrop-blur-xl border-r border-slate-800/80 flex flex-col justify-between select-none h-screen text-slate-300 font-sans">
       <div>
         {/* macOS Window Controls Padding & App Branding */}
-        <div className="pt-10 pb-4 px-5 border-b border-slate-800/60 flex items-center gap-3">
+        <div data-tauri-drag-region className="pt-10 pb-4 px-5 border-b border-slate-800/60 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20 text-white font-bold text-sm">
             MP
           </div>
@@ -119,9 +119,9 @@ export const XcodeSidebar: React.FC = () => {
       </div>
 
       {/* Footer info */}
-      <div className="p-4 border-t border-slate-800/60 bg-slate-950/40 text-[11px] text-slate-500 flex justify-between items-center">
-        <span>Apple Silicon M-Series</span>
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      <div className="p-4 border-t border-slate-800/60 bg-slate-950/40 text-[11px] text-slate-500 flex justify-between items-center min-w-0">
+        <span className="truncate pr-2 font-mono">Apple Silicon M-Series</span>
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
       </div>
     </aside>
   );

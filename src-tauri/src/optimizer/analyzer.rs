@@ -26,3 +26,29 @@ pub fn calculate_system_health_score(metrics: &SystemMetricsSnapshot) -> u32 {
 
     score.max(10)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_perfect_health_score() {
+        let mut metrics = SystemMetricsSnapshot::default();
+        metrics.cpu.overall_usage_pct = 20.0;
+        metrics.memory.memory_pressure_level = "Normal".to_string();
+        metrics.disk.used_pct = 50.0;
+
+        assert_eq!(calculate_system_health_score(&metrics), 100);
+    }
+
+    #[test]
+    fn test_critical_health_score() {
+        let mut metrics = SystemMetricsSnapshot::default();
+        metrics.cpu.overall_usage_pct = 85.0; // -25
+        metrics.memory.memory_pressure_level = "Critical".to_string(); // -30
+        metrics.disk.used_pct = 95.0; // -25
+
+        assert_eq!(calculate_system_health_score(&metrics), 20);
+    }
+}
+

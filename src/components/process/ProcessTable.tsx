@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useProcessStore } from '@/store/useProcessStore';
-import { Search, Trash2, FolderOpen, Shield, Cpu, Database } from 'lucide-react';
+import { Search, Trash2, FolderOpen } from 'lucide-react';
 import { revealInFinder } from '@/lib/ipc';
 
 export const ProcessTable: React.FC = () => {

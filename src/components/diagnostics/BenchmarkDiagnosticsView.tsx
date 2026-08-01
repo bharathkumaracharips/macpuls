@@ -65,7 +65,7 @@ export const BenchmarkDiagnosticsView: React.FC = () => {
             </div>
           ) : (
             <div className="py-8 text-center text-slate-500 text-xs font-mono">
-              Click 'Run Benchmark' to start CPU test.
+              Click &apos;Run Benchmark&apos; to start CPU test.
             </div>
           )}
         </div>
@@ -97,7 +97,7 @@ export const BenchmarkDiagnosticsView: React.FC = () => {
             </div>
           ) : (
             <div className="py-8 text-center text-slate-500 text-xs font-mono">
-              Click 'Test Storage' to start sequential SSD I/O test.
+              Click &apos;Test Storage&apos; to start sequential SSD I/O test.
             </div>
           )}
         </div>

@@ -8,7 +8,6 @@ import { SafetyTier } from '@/types/tauri';
 export const CleanupDashboard: React.FC = () => {
   const {
     targets,
-    isLoading,
     isExecuting,
     isConfirmModalOpen,
     lastReclaimedBytes,

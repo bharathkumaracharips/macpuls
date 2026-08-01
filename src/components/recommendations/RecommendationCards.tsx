@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Lightbulb, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lightbulb, ArrowRight } from 'lucide-react';
 import { RecommendationItem } from '@/types/tauri';
 import { getRecommendations } from '@/lib/ipc';
 import { useSystemStore } from '@/store/useSystemStore';

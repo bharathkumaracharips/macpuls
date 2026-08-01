@@ -8,12 +8,14 @@ export const HistoryView: React.FC = () => {
   const [range, setRange] = useState<'24h' | '7d' | '30d'>('24h');
 
   // Sample historical time-series data points
-  const sampleData = Array.from({ length: 24 }, (_, i) => ({
-    time: `${i}:00`,
-    cpu: Math.floor(12 + Math.sin(i) * 15 + Math.random() * 8),
-    ram: Math.floor(14 + Math.cos(i) * 2 + Math.random() * 1.5),
-    diskIo: Math.floor(4 + Math.random() * 12),
-  }));
+  const sampleData = React.useMemo(() => {
+    return Array.from({ length: 24 }, (_, i) => ({
+      time: `${i}:00`,
+      cpu: Math.floor(12 + Math.sin(i) * 15 + ((i * 7) % 8)),
+      ram: Math.floor(14 + Math.cos(i) * 2 + ((i * 3) % 2)),
+      diskIo: Math.floor(4 + ((i * 5) % 12)),
+    }));
+  }, []);
 
   return (
     <div className="p-6 space-y-6 select-none font-sans">

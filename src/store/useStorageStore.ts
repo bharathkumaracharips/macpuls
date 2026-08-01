@@ -12,7 +12,7 @@ interface StorageState {
   fetchDuplicates: (scanDir?: string) => Promise<void>;
 }
 
-export const useStorageStore = create<StorageState>((set, get) => ({
+export const useStorageStore = create<StorageState>((set) => ({
   treemapRoot: null,
   duplicateGroups: [],
   isScanningTreemap: false,

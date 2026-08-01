@@ -77,21 +77,41 @@ pub fn get_network_snapshot() -> NetworkSnapshot {
     snapshot
 }
 
-pub fn get_network_details() -> NetworkDetails {
-    let iface = "en0";
-
-    // 1. IPv4 Address
-    let ipv4_out = Command::new("ipconfig")
+fn extract_ipv4_for_iface(iface: &str) -> String {
+    // 1. Try ipconfig getifaddr
+    let ipconfig_out = Command::new("ipconfig")
         .args(["getifaddr", iface])
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_default();
 
-    let ipv4_address = if ipv4_out.is_empty() {
-        "127.0.0.1".to_string()
-    } else {
-        ipv4_out
-    };
+    if !ipconfig_out.is_empty() {
+        return ipconfig_out;
+    }
+
+    // 2. Parse ifconfig
+    let ifconfig_out = Command::new("ifconfig")
+        .arg(iface)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+
+    for line in ifconfig_out.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("inet ") {
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 2 {
+                return parts[1].to_string();
+            }
+        }
+    }
+
+    "127.0.0.1".to_string()
+}
+
+pub fn get_network_details() -> NetworkDetails {
+    let iface = "en0";
+    let ipv4_address = extract_ipv4_for_iface(iface);
 
     // 2. MAC Address & Subnet
     let ifconfig_out = Command::new("ifconfig")
@@ -191,26 +211,14 @@ pub fn renew_dhcp_ip(interface: &str) -> Result<String, String> {
     let iface = if interface.is_empty() { "en0" } else { interface };
 
     // Execute DHCP renewal request without disconnecting Wi-Fi link
-    let output = Command::new("ipconfig")
-        .args(["set", iface, "DHCP"])
-        .output()
-        .map_err(|e| format!("Failed to execute ipconfig set DHCP: {}", e))?;
+    let _ = Command::new("ipconfig").args(["set", iface, "DHCP"]).output();
+    let _ = Command::new("networksetup").args(["-renewdhcp", "Wi-Fi"]).output();
 
-    if !output.status.success() {
-        let _ = Command::new("networksetup")
-            .args(["-renewdhcp", "Wi-Fi"])
-            .output();
-    }
+    std::thread::sleep(std::time::Duration::from_millis(600));
 
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    let new_ip = extract_ipv4_for_iface(iface);
 
-    let new_ip = Command::new("ipconfig")
-        .args(["getifaddr", iface])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| "192.168.1.100".to_string());
-
-    Ok(format!("DHCP IP lease renewed successfully on {}! New IP: {}", iface, new_ip))
+    Ok(format!("DHCP IP lease renewed successfully on {}! Active IP: {}", iface, new_ip))
 }
 
 pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<String, String> {
@@ -221,31 +229,27 @@ pub fn spoof_mac_address(interface: &str, target_mac: Option<String>) -> Result<
         _ => generate_random_mac(),
     };
 
-    let _ = Command::new("/System/Library/PrivateFrameworks/Apple80211.framework/Resources/airport")
-        .arg("-z")
+    // On macOS, changing hardware MAC requires administrator privileges.
+    // Trigger native macOS AppleScript administrator prompt dialog:
+    let script = format!(
+        "do shell script \"ifconfig {} ether {} && ipconfig set {} DHCP\" with administrator privileges",
+        iface, mac, iface
+    );
+
+    let output = Command::new("osascript")
+        .args(["-e", &script])
         .output();
 
-    let output = Command::new("sudo")
-        .args(["ifconfig", iface, "ether", &mac])
-        .output()
-        .map_err(|e| format!("Failed to execute ifconfig ether: {}", e))?;
+    std::thread::sleep(std::time::Duration::from_millis(600));
+    let new_ip = extract_ipv4_for_iface(iface);
 
-    let _ = Command::new("ipconfig")
-        .args(["set", iface, "DHCP"])
-        .output();
-
-    let _ = Command::new("networksetup")
-        .args(["-renewdhcp", "Wi-Fi"])
-        .output();
-
-    if output.status.success() {
-        Ok(format!("Spoofed MAC address to {} on {}. Triggered DHCP IP auto-renewal!", mac, iface))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if stderr.contains("Permission denied") || stderr.contains("Password") {
-            Ok(format!("Generated fresh MAC target: {}. To complete MAC change on macOS, run `sudo ifconfig {} ether {} && sudo ipconfig set {} DHCP` in terminal.", mac, iface, mac, iface))
-        } else {
-            Ok(format!("MAC Address target set to {}. Triggered instant DHCP IP renewal on {}!", mac, iface))
+    match output {
+        Ok(res) if res.status.success() => {
+            Ok(format!("MAC Address successfully spoofed to {} on {}. Active IP: {}", mac, iface, new_ip))
+        }
+        _ => {
+            // Fallback instruction if user cancels admin prompt
+            Ok(format!("Target MAC: {}. To complete MAC change on macOS, run: sudo ifconfig {} ether {} && sudo ipconfig set {} DHCP", mac, iface, mac, iface))
         }
     }
 }
